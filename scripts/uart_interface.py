@@ -149,13 +149,15 @@ def main():
                    (chunk[4] << 32)
         
         # 2. Extract Bit Fields
-        # Structure: [Padding 4b] [Score B 18b] [Score A 18b]
+        # Structure: [Padding 4b] [Score A 18b] [Score B 18b]
         
-        # Score A: Bottom 18 bits (Mask 0x3FFFF)
-        raw_a = full_val & 0x3FFFF
-        
-        # Score B: Next 18 bits (Shift down 18, then Mask)
-        raw_b = (full_val >> 18) & 0x3FFFF
+        # NEW CORRECT ORDER
+        # Score B is LOW 18 bits
+        raw_b = full_val & 0x3FFFF
+
+        # Score A is bits [35:18]
+        raw_a = (full_val >> 18) & 0x3FFFF
+
         
         # 3. Sign Extend (Convert to signed int)
         val_a = sign_extend_18bit(raw_a)

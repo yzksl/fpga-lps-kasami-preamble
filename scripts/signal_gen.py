@@ -16,9 +16,9 @@ USE_HARDCODED_INPUTS = True
 # Defaults if USE_HARDCODED_INPUTS is True
 HC_TOTAL_SAMPLES = 4096
 HC_END_INDEX_A   = 1999   # Seq A ends exactly at index 1999
-HC_END_INDEX_B   = 1999   # Seq B ends exactly at index 1999
+HC_END_INDEX_B   = 0   # Seq B ends exactly at index 1999
 HC_SIGNAL_AMP    = 50     
-HC_NOISE_AMP     = 5     
+HC_NOISE_AMP     = 0     
 
 # ==========================================
 # 3. CONSTANTS & COLORS
