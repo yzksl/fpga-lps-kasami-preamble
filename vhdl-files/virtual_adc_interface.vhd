@@ -105,7 +105,7 @@ begin
     -- =========================================================================
     u_clk_div : clock_div_160k
     port map (
-        clk_50    => cstatelk_50,
+        clk_50    => clk_50,
         sys_rst   => sys_rst,
         proc_en   => proc_en,     -- FSM starts the simulation clock
         tick_160k => tick_pulse
