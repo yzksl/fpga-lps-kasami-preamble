@@ -1,0 +1,43 @@
+# Quartus Compilation Databases (HUGE - Do not commit)
+/db/
+/incremental_db/
+/output_files/
+/simulation/
+/greybox_tmp/
+
+# Quartus Settings that are User-Specific (Window positions, etc.)
+*.qws
+*.qws_old
+
+# Backup files
+*.bak
+*.orig
+*.rej
+
+# Generated IP files that are usually redundant (Optional)
+# (Keep .qip and the .vhd, but simpler wizard outputs can be ignored if you want)
+*.cmp
+*.bsf
+*.html
+*.ppf
+
+# Ignore ModelSim Simulation Artifacts
+*.wlf
+*.mpf
+_info
+_vmake
+
+# Ignore Compiled Libraries (usually inside a 'work' folder)
+work/
+transcript
+
+# Ignore Quartus Generated Folders
+db/
+incremental_db/
+output_files/
+simulation/
+
+# Ignore compiled database files
+*.qdb
+*.qpg
+*.qtl
