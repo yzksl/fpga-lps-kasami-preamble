@@ -39,8 +39,8 @@ architecture rtl of kasami_correlator_system is
         (
             clock       : IN STD_LOGIC  := '1';
             data        : IN STD_LOGIC_VECTOR (9 DOWNTO 0);
-            rdaddress   : IN STD_LOGIC_VECTOR (7 DOWNTO 0);
-            wraddress   : IN STD_LOGIC_VECTOR (7 DOWNTO 0);
+            rdaddress   : IN STD_LOGIC_VECTOR (9 DOWNTO 0);
+            wraddress   : IN STD_LOGIC_VECTOR (9 DOWNTO 0);
             wren        : IN STD_LOGIC  := '0';
             q           : OUT STD_LOGIC_VECTOR (9 DOWNTO 0)
         );
@@ -54,8 +54,8 @@ architecture rtl of kasami_correlator_system is
             address_lut : out std_logic_vector(7 downto 0);
             score_done  : out std_logic;
             acc_enable  : out std_logic;
-            w_address   : out std_logic_vector(7 downto 0);
-            r_address   : out std_logic_vector(7 downto 0)
+            w_address   : out std_logic_vector(9 downto 0);
+            r_address   : out std_logic_vector(9 downto 0)
         );
     end component;
 
@@ -84,8 +84,8 @@ architecture rtl of kasami_correlator_system is
     -- =========================================================================
     
     -- Memory & Controller Wires
-    signal ctrl_w_addr      : std_logic_vector(7 downto 0);
-    signal ctrl_r_addr      : std_logic_vector(7 downto 0);
+    signal ctrl_w_addr      : std_logic_vector(9 downto 0);
+    signal ctrl_r_addr      : std_logic_vector(9 downto 0);
     signal ctrl_lut_addr    : std_logic_vector(7 downto 0);
     signal ctrl_acc_en      : std_logic;
     signal ctrl_score_done  : std_logic;
