@@ -20,3 +20,24 @@
 *.bsf
 *.html
 *.ppf
+
+# Ignore ModelSim Simulation Artifacts
+*.wlf
+*.mpf
+_info
+_vmake
+
+# Ignore Compiled Libraries (usually inside a 'work' folder)
+work/
+transcript
+
+# Ignore Quartus Generated Folders
+db/
+incremental_db/
+output_files/
+simulation/
+
+# Ignore compiled database files
+*.qdb
+*.qpg
+*.qtl
