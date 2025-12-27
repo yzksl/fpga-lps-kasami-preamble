@@ -15,7 +15,7 @@ entity uart_transmitter is
         tx_en       : in  std_logic;
         
         -- FIFO Interface
-        fifo_ready  : in  std_logic;                    -- "Empty" flag inverted (1=Data Exists)
+        fifo_ready  : in  std_logic;                    -- "Empty" flag inverted (1=Data Exists) (DIFFERENT FUNCTION THAN THE ONE IN INPUT BUFFER)
         scores      : in  std_logic_vector(35 downto 0); -- Input from FIFO
         d_req       : out std_logic;                    -- Read Request (Pop)
         
