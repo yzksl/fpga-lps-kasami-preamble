@@ -17,7 +17,8 @@ entity kasami_correlator_system is
         found_a       : out std_logic;
         found_b       : out std_logic;
         score_a       : out signed(17 downto 0);
-        score_b       : out signed(17 downto 0)
+        score_b       : out signed(17 downto 0);
+        score_done    : out std_logic                     -- ADDED: Valid Score Pulse
     );
 end entity kasami_correlator_system;
 
@@ -181,6 +182,9 @@ begin
     
     score_a <= eng_score_a;
     score_b <= eng_score_b;
+    
+    -- ADDED: Drive the external score_done port
+    score_done <= ctrl_score_done;
 
     -- =========================================================================
     -- 2. GLOBAL COUNTER (Time Base)
