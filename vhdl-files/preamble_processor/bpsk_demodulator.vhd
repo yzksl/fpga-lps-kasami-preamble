@@ -8,38 +8,37 @@ entity bpsk_demodulator is
         rst             : in  std_logic;
         
         -- Inputs from FIFO Buffer (Virtual ADC)
-        fifo_ready      : in  std_logic;                     -- Enables the registers (New sample available)
-        bpsk_sample     : in  std_logic_vector(7 downto 0);  -- Signed 8-bit input
+        fifo_ready      : in  std_logic;                    -- Enables the registers
+        bpsk_sample     : in  std_logic_vector(7 downto 0); -- Signed 8-bit input
         
         -- Outputs to Kasami Correlator
-        demod_ready     : out std_logic;                     -- Data Valid Pulse
-        demod_sample    : out std_logic_vector(11 downto 0)  -- Signed 12-bit output
+        demod_ready     : out std_logic;                    -- Data Valid Pulse
+        demod_sample    : out std_logic_vector(9 downto 0)  -- Signed 10-bit output
     );
 end entity bpsk_demodulator;
 
 architecture rtl of bpsk_demodulator is
 
     -- 1. Shift Registers (Reg 0 to Reg 3)
-    -- Using signed types for arithmetic ease
-    signal reg_3 : signed(7 downto 0); -- Newest sample
+    signal reg_3 : signed(7 downto 0); 
     signal reg_2 : signed(7 downto 0);
     signal reg_1 : signed(7 downto 0);
-    signal reg_0 : signed(7 downto 0); -- Oldest sample
+    signal reg_0 : signed(7 downto 0); 
 
-    -- 2. Adder Stage Signals (10-bit to prevent overflow from 8-bit additions)
-    signal sum_right : signed(9 downto 0); -- Output of Right Adder (Reg0 + Reg1)
-    signal sum_left  : signed(9 downto 0); -- Output of Left Adder (Reg2 + Reg3)
+    -- 2. Adder Stage Signals (10-bit)
+    -- We resize inputs to 10-bit to avoid overflow during addition.
+    signal sum_right : signed(9 downto 0); -- (Reg0 + Reg1)
+    signal sum_left  : signed(9 downto 0); -- (Reg2 + Reg3)
 
-    -- 3. Subtractor Stage Signal
-    signal diff_val  : signed(10 downto 0); -- Result can be slightly larger
+    -- 3. Subtractor Stage Signal (10-bit)
+    -- Max possible result is 510, which fits in 10-bit signed (-512 to +511).
+    signal diff_val  : signed(9 downto 0); 
 
 begin
 
     -- =========================================================================
-    -- 1. Shift Register Chain (Reg 3 -> Reg 2 -> Reg 1 -> Reg 0)
+    -- 1. Shift Register Chain (Sliding Window M=4)
     -- =========================================================================
-    -- Implements the sliding window for M=4 oversampling.
-    -- Only shifts when 'fifo_ready' is high (valid data from FIFO).
     process(clk)
     begin
         if rising_edge(clk) then
@@ -49,7 +48,6 @@ begin
                 reg_1 <= (others => '0');
                 reg_0 <= (others => '0');
             elsif fifo_ready = '1' then
-                -- Shift pipeline: Newest data enters Reg 3, oldest leaves Reg 0
                 reg_3 <= signed(bpsk_sample);
                 reg_2 <= reg_3;
                 reg_1 <= reg_2;
@@ -59,28 +57,24 @@ begin
     end process;
 
     -- =========================================================================
-    -- 2. Arithmetic Datapath (Adders and Subtractor)
+    -- 2. Arithmetic Datapath
     -- =========================================================================
-    -- As per diagram:
-    -- Right Adder: Sums the two oldest samples (Reg 0, Reg 1)
-    -- Left Adder:  Sums the two newest samples (Reg 2, Reg 3)
-    -- Subtractor:  (Reg 0 + Reg 1) - (Reg 2 + Reg 3)
     
-    -- Sign extension is handled automatically by resize function
+    -- Step A: Additions
+    -- Resize 8-bit regs to 10-bit to safely add them.
     sum_right <= resize(reg_0, 10) + resize(reg_1, 10);
     sum_left  <= resize(reg_2, 10) + resize(reg_3, 10);
     
-    -- Final Calculation: (a_in - b_in) from the diagram
-    diff_val  <= resize(sum_right, 11) - resize(sum_left, 11);
+    -- Step B: Subtraction (Direct 10-bit)
+    -- Since max value is 510, it will not overflow 10-bit signed logic.
+    diff_val <= sum_right - sum_left;
 
-    -- Output Assignment (Resizing 11-bit result to 12-bit output standard)
-    demod_sample <= std_logic_vector(resize(diff_val, 12));
+    -- Output Assignment
+    demod_sample <= std_logic_vector(diff_val);
 
     -- =========================================================================
-    -- 3. Control Logic (D Flip-Flop for Ready Signal)
+    -- 3. Control Logic
     -- =========================================================================
-    -- Delays the fifo_ready signal by 1 clock cycle to align with the 
-    -- register update. This tells the next block "The data on demod_sample is valid now".
     process(clk)
     begin
         if rising_edge(clk) then
