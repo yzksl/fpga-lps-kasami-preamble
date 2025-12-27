@@ -4,44 +4,41 @@ use ieee.numeric_std.all;
 
 entity uart_transmitter is
     generic (
-        CLK_FREQ    : integer := 50_000_000; -- 50 MHz Clock
-        BAUD_RATE   : integer := 115200      -- Standard Baud Rate
+        CLK_FREQ    : integer := 50_000_000;
+        BAUD_RATE   : integer := 115200 -- 115200 is standard
     );
     port (
         clk         : in  std_logic;
         rst         : in  std_logic;
         
-        -- Control Interface
-        tx_en       : in  std_logic;                    -- Global Enable
+        -- Control
+        tx_en       : in  std_logic;
         
-        -- FIFO Interface (Matches Top-Level)
-        fifo_ready  : in  std_logic;                    -- Input: Data Available
-        scores      : in  std_logic_vector(35 downto 0); -- Input: 36-bit Score
-        d_req       : out std_logic;                    -- Output: Read from FIFO
+        -- FIFO Interface
+        fifo_ready  : in  std_logic;                    -- "Empty" flag inverted (1=Data Exists)
+        scores      : in  std_logic_vector(35 downto 0); -- Input from FIFO
+        d_req       : out std_logic;                    -- Read Request (Pop)
         
         -- Serial Output
-        tx_line     : out std_logic                     -- UART TX Pin
+        tx_line     : out std_logic
     );
 end entity uart_transmitter;
 
 architecture rtl of uart_transmitter is
 
-    -- Timing Constants
     constant BIT_PERIOD : integer := CLK_FREQ / BAUD_RATE;
     
-    -- State Machine Definition
     type state_type is (IDLE, FETCH, LATCH, TX_START, TX_DATA, TX_STOP, NEXT_BYTE);
     signal state : state_type;
 
-    -- Internal Registers
     signal baud_timer   : integer range 0 to BIT_PERIOD;
-    signal bit_index    : integer range 0 to 7;         -- 0..7 (Standard Byte)
-    signal byte_count   : integer range 0 to 4;         -- 0..4 (5 Bytes total)
+    signal bit_index    : integer range 0 to 7;
+    signal byte_count   : integer range 0 to 5; -- Counts 0 to 5
     
-    -- Datapath Registers
-    -- We pad the 36-bit input to 40 bits (5 bytes * 8 bits)
+    -- 40-bit Register (holds 5 bytes)
+    -- We will shift this right by 8 bits after every send.
     signal sh_reg       : std_logic_vector(39 downto 0); 
-    signal tx_buffer    : std_logic_vector(7 downto 0); -- Current byte to send
+    signal tx_buffer    : std_logic_vector(7 downto 0);
 
 begin
 
@@ -50,7 +47,7 @@ begin
         if rising_edge(clk) then
             if rst = '1' then
                 state       <= IDLE;
-                tx_line     <= '1'; -- Idle High
+                tx_line     <= '1'; -- UART Idle is High
                 d_req       <= '0';
                 baud_timer  <= 0;
                 bit_index   <= 0;
@@ -60,39 +57,42 @@ begin
             else
                 case state is
                 
-                    -- 1. IDLE: Wait for Enable and Data
+                    -- 1. IDLE: Wait for Master Enable + Data in FIFO
                     when IDLE =>
                         d_req <= '0';
                         tx_line <= '1';
                         byte_count <= 0;
-                        if tx_en = '1' and fifo_ready = '1' then
+                        
+                        if (tx_en = '1') and (fifo_ready = '1') then
                             state <= FETCH;
                         end if;
 
-                    -- 2. FETCH: Pulse FIFO Read
+                    -- 2. FETCH: Pulse FIFO Read Request
+                    -- This tells the FIFO "Give me the next 36-bit word".
                     when FETCH =>
-                        d_req <= '1'; -- Pop 36-bit data
+                        d_req <= '1';
                         state <= LATCH;
 
-                    -- 3. LATCH: Store Data & Prepare Padded Frame
+                    -- 3. LATCH: Capture Data (Wait 1 cycle for FIFO latency)
                     when LATCH =>
                         d_req <= '0';
+                        
                         -- PACKING STRATEGY:
-                        -- We put the 36 bits into the lower part of a 40-bit register.
-                        -- Upper 4 bits are '0' (Padding).
-                        -- Format: [0000][Score 35..0]
+                        -- Pad the 36-bit score to 40 bits (5 bytes).
+                        -- We add "0000" at the top.
+                        -- sh_reg <= [0000] & [Score 35..0]
+                        sh_reg(39 downto 36) <= "0000";
                         sh_reg(35 downto 0)  <= scores;
-                        sh_reg(39 downto 36) <= "0000"; 
+                        
                         state <= TX_START;
 
                     -- 4. TX_START: Send Start Bit (Low)
                     when TX_START =>
                         tx_line <= '0';
                         
-                        -- SLICING STRATEGY:
-                        -- Extract the specific byte we need to send now.
-                        -- We shift the big register down by 8 bits * byte_count
-                        tx_buffer <= sh_reg((byte_count*8 + 7) downto (byte_count*8));
+                        -- FIX: Always grab the BOTTOM byte.
+                        -- We shift the data down later in NEXT_BYTE state.
+                        tx_buffer <= sh_reg(7 downto 0);
 
                         if baud_timer < BIT_PERIOD - 1 then
                             baud_timer <= baud_timer + 1;
@@ -101,7 +101,7 @@ begin
                             state <= TX_DATA;
                         end if;
 
-                    -- 5. TX_DATA: Shift out 8 bits of the current byte
+                    -- 5. TX_DATA: Send 8 bits (LSB first)
                     when TX_DATA =>
                         tx_line <= tx_buffer(bit_index);
                         
@@ -128,13 +128,17 @@ begin
                             state <= NEXT_BYTE;
                         end if;
 
-                    -- 7. NEXT_BYTE: Check if we sent all 5 bytes
+                    -- 7. NEXT_BYTE: Shift and Loop
                     when NEXT_BYTE =>
                         if byte_count < 4 then
-                            byte_count <= byte_count + 1; -- Move to next byte
-                            state <= TX_START;            -- Send it
+                            -- FIX: Shift the whole register right by 8 bits.
+                            -- This brings the next byte into position (7 downto 0).
+                            sh_reg <= x"00" & sh_reg(39 downto 8);
+                            
+                            byte_count <= byte_count + 1;
+                            state <= TX_START;
                         else
-                            state <= IDLE;                -- Done with all 36 bits
+                            state <= IDLE; -- All 5 bytes sent
                         end if;
                         
                 end case;
