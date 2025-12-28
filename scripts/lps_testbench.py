@@ -114,10 +114,9 @@ def unpack_scores(rx_bytes):
         full_val = (chunk[0]) | (chunk[1] << 8) | (chunk[2] << 16) | \
                    (chunk[3] << 24) | (chunk[4] << 32)
         
-        # Correct extraction:
-        raw_b = full_val & 0x3FFFF
-        raw_a = (full_val >> 18) & 0x3FFFF
-
+        # Extract [Padding 4b] [Score B 18b] [Score A 18b]
+        raw_a = full_val & 0x3FFFF
+        raw_b = (full_val >> 18) & 0x3FFFF
         
         scores_a.append(sign_extend_18bit(raw_a))
         scores_b.append(sign_extend_18bit(raw_b))
