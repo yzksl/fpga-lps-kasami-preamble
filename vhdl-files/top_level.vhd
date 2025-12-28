@@ -18,7 +18,7 @@ entity top_level is
         led_b       : out std_logic;
         led_status  : out std_logic_vector(1 downto 0);
 
-        -- NEW: Multiplexed Display Pins
+        -- Multiplexed Display Pins
         fpga_dig_sel : out std_logic_vector(3 downto 0); -- DIG1..DIG4
         fpga_seg_out : out std_logic_vector(7 downto 0)  -- SEG0..SEG7
     );
@@ -31,6 +31,11 @@ architecture structural of top_level is
     signal internal_hex_hunds : std_logic_vector(6 downto 0);
     signal internal_hex_tens  : std_logic_vector(6 downto 0);
     signal internal_hex_ones  : std_logic_vector(6 downto 0);
+
+    -- NEW: Intermediate signals for LED Inversion
+    signal sig_led_a        : std_logic;
+    signal sig_led_b        : std_logic;
+    signal sig_led_status   : std_logic_vector(1 downto 0);
 
     -- Other existing signals...
     signal rst_btn_inverted   : std_logic;
@@ -84,7 +89,6 @@ architecture structural of top_level is
             time_a : in std_logic_vector(12 downto 0); time_b : in std_logic_vector(12 downto 0);
             found_a : in std_logic; found_b : in std_logic; tx : out std_logic; out_fifo_empty : out std_logic;
             
-            -- CHANGED: These now map to internal signals, not pins
             hex_thous : out std_logic_vector(6 downto 0);
             hex_hunds : out std_logic_vector(6 downto 0);
             hex_tens  : out std_logic_vector(6 downto 0);
@@ -93,7 +97,6 @@ architecture structural of top_level is
         );
     end component;
 
-    -- NEW SCANNER COMPONENT
     component seven_seg_scanner is
         port (
             clk : in std_logic;
@@ -110,12 +113,29 @@ begin
 
     rst_btn_inverted <= not btn_rst;
 
+    -------------------------------------------------------------------------
+    -- LED OUTPUT INVERSION LOGIC
+    -------------------------------------------------------------------------
+    -- 1. Components drive the 'sig_' signals (active high internally)
+    -- 2. We invert them here before assigning to physical 'led_' ports
+    
+    led_a       <= not sig_led_a;
+    led_b       <= not sig_led_b;
+    led_status  <= not sig_led_status;
+
+    -------------------------------------------------------------------------
+    -- COMPONENT INSTANTIATION
+    -------------------------------------------------------------------------
+
     inst_fsm_controller : fsm_controller
     port map (
         clk_50 => clk_50, btn_rst => rst_btn_inverted, sw_start => sw_start,
         in_fifo_empty => sig_in_fifo_empty, out_fifo_empty => sig_out_fifo_empty,
         sys_rst => sys_rst_global, rx_w_en => sig_rx_w_en, tx_en => sig_tx_en,
-        proc_en => sig_proc_en, led_status => led_status
+        proc_en => sig_proc_en, 
+        
+        -- Mapped to intermediate signal
+        led_status => sig_led_status 
     );
 
     inst_virtual_adc : virtual_adc_interface
@@ -140,15 +160,17 @@ begin
         time_a => sig_time_a, time_b => sig_time_b, found_a => sig_found_a, found_b => sig_found_b,
         tx => tx, out_fifo_empty => sig_out_fifo_empty,
         
-        -- Connect output of interface to INTERNAL signals
+        -- Connect internal hex signals
         hex_thous => internal_hex_thous,
         hex_hunds => internal_hex_hunds,
         hex_tens  => internal_hex_tens,
         hex_ones  => internal_hex_ones,
-        led_a => led_a, led_b => led_b
+        
+        -- Mapped to intermediate signals
+        led_a => sig_led_a, 
+        led_b => sig_led_b  
     );
 
-    -- NEW: Connect Internal Signals to Scanner
     inst_scanner : seven_seg_scanner
     port map (
         clk      => clk_50,
@@ -156,8 +178,8 @@ begin
         in_hunds => internal_hex_hunds,
         in_tens  => internal_hex_tens,
         in_ones  => internal_hex_ones,
-        seg_data_out => fpga_seg_out, -- Physical Pin
-        dig_sel_out  => fpga_dig_sel  -- Physical Pin
+        seg_data_out => fpga_seg_out, 
+        dig_sel_out  => fpga_dig_sel  
     );
 
 end architecture structural;
