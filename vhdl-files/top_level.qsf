@@ -43,15 +43,6 @@ set_global_assignment -name TOP_LEVEL_ENTITY top_level
 set_global_assignment -name ORIGINAL_QUARTUS_VERSION 24.1STD.0
 set_global_assignment -name PROJECT_CREATION_TIME_DATE "14:18:43  DECEMBER 27, 2025"
 set_global_assignment -name LAST_QUARTUS_VERSION "24.1std.0 Lite Edition"
-set_global_assignment -name VHDL_FILE virtual_adc_interface/uart_rx.vhd
-set_global_assignment -name VHDL_FILE virtual_adc_interface/clock_div_160k.vhd
-set_global_assignment -name VHDL_FILE preamble_processor/kasami_correlator_system/memory_controller.vhd
-set_global_assignment -name VHDL_FILE preamble_processor/kasami_correlator_system/kasami_lut.vhd
-set_global_assignment -name VHDL_FILE preamble_processor/kasami_correlator_system/correlator_engine.vhd
-set_global_assignment -name VHDL_FILE preamble_processor/bpsk_demodulator.vhd
-set_global_assignment -name VHDL_FILE output_interface/uart_tx.vhd
-set_global_assignment -name VHDL_FILE output_interface/fifo_36bit_256.vhd
-set_global_assignment -name VHDL_FILE output_interface/display_controller.vhd
 set_global_assignment -name PROJECT_OUTPUT_DIRECTORY output_files
 set_global_assignment -name MIN_CORE_JUNCTION_TEMP 0
 set_global_assignment -name MAX_CORE_JUNCTION_TEMP 85
@@ -64,6 +55,49 @@ set_global_assignment -name EDA_GENERATE_FUNCTIONAL_NETLIST OFF -section_id eda_
 set_global_assignment -name EDA_GENERATE_FUNCTIONAL_NETLIST OFF -section_id eda_board_design_symbol
 set_global_assignment -name EDA_GENERATE_FUNCTIONAL_NETLIST OFF -section_id eda_board_design_signal_integrity
 set_global_assignment -name EDA_GENERATE_FUNCTIONAL_NETLIST OFF -section_id eda_board_design_boundary_scan
-set_global_assignment -name QIP_FILE preamble_processor/kasami_correlator_system/ram_dual_port.qip
+set_global_assignment -name POWER_PRESET_COOLING_SOLUTION "23 MM HEAT SINK WITH 200 LFPM AIRFLOW"
+set_global_assignment -name POWER_BOARD_THERMAL_MODEL "NONE (CONSERVATIVE)"
+set_global_assignment -name PARTITION_NETLIST_TYPE SOURCE -section_id Top
+set_global_assignment -name PARTITION_FITTER_PRESERVATION_LEVEL PLACEMENT_AND_ROUTING -section_id Top
+set_global_assignment -name PARTITION_COLOR 16764057 -section_id Top
+set_location_assignment PIN_84 -to led_b
+set_location_assignment PIN_85 -to led_a
+set_location_assignment PIN_87 -to led_status[0]
+set_location_assignment PIN_86 -to led_status[1]
+set_location_assignment PIN_115 -to rx
+set_location_assignment PIN_114 -to tx
+set_location_assignment PIN_91 -to btn_rst
+set_location_assignment PIN_89 -to sw_disp
+set_location_assignment PIN_88 -to sw_start
+set_location_assignment PIN_133 -to fpga_dig_sel[0]
+set_location_assignment PIN_135 -to fpga_dig_sel[1]
+set_location_assignment PIN_136 -to fpga_dig_sel[2]
+set_location_assignment PIN_137 -to fpga_dig_sel[3]
+set_location_assignment PIN_128 -to fpga_seg_out[0]
+set_location_assignment PIN_121 -to fpga_seg_out[1]
+set_location_assignment PIN_125 -to fpga_seg_out[2]
+set_location_assignment PIN_129 -to fpga_seg_out[3]
+set_location_assignment PIN_132 -to fpga_seg_out[4]
+set_location_assignment PIN_126 -to fpga_seg_out[5]
+set_location_assignment PIN_124 -to fpga_seg_out[6]
+set_location_assignment PIN_127 -to fpga_seg_out[7]
+set_location_assignment PIN_23 -to clk_50
+set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
+set_global_assignment -name VHDL_FILE output_interface/seven_seg_scanner.vhd
+set_global_assignment -name VHDL_FILE preamble_processor/kasami_correlator_system.vhd
+set_global_assignment -name VHDL_FILE top_level.vhd
+set_global_assignment -name VHDL_FILE preamble_processor.vhd
+set_global_assignment -name VHDL_FILE virtual_adc_interface.vhd
+set_global_assignment -name VHDL_FILE output_interface.vhd
+set_global_assignment -name VHDL_FILE fsm_controller.vhd
+set_global_assignment -name VHDL_FILE virtual_adc_interface/uart_rx.vhd
+set_global_assignment -name VHDL_FILE virtual_adc_interface/clock_div_160k.vhd
+set_global_assignment -name VHDL_FILE preamble_processor/kasami_correlator_system/memory_controller.vhd
+set_global_assignment -name VHDL_FILE preamble_processor/kasami_correlator_system/kasami_lut.vhd
+set_global_assignment -name VHDL_FILE preamble_processor/kasami_correlator_system/correlator_engine.vhd
+set_global_assignment -name VHDL_FILE preamble_processor/bpsk_demodulator.vhd
+set_global_assignment -name VHDL_FILE output_interface/uart_tx.vhd
+set_global_assignment -name VHDL_FILE output_interface/display_controller.vhd
 set_global_assignment -name QIP_FILE virtual_adc_interface/fifo_8bit_4096.qip
 set_global_assignment -name QIP_FILE output_interface/fifo_36bit_4096.qip
+set_global_assignment -name QIP_FILE preamble_processor/kasami_correlator_system/ram_dual_port.qip
