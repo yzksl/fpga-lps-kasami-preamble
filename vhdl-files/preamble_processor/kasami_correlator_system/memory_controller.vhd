@@ -43,6 +43,8 @@ architecture rtl of memory_controller is
     signal sum_stage_b  : unsigned(9 downto 0);
     signal read_calc    : unsigned(9 downto 0);
 
+    -- To stop score_done from sending when uploading
+    signal processing_active : std_logic := '0';
 begin
 
     -- =========================================================================
@@ -60,6 +62,22 @@ begin
     end process;
 
     address_lut <= std_logic_vector(loop_count(7 downto 0));
+
+    -- =========================================================================
+    -- NEW LOGIC: BUSY FLAG
+    -- =========================================================================
+    process(clk_50)
+    begin
+        if rising_edge(clk_50) then
+            if sys_rst = '1' then
+                processing_active <= '0';
+            elsif demod_ready = '1' then
+                processing_active <= '1'; -- Start processing
+            elsif loop_count = 255 then   -- End of valid window
+                processing_active <= '0'; -- Stop processing
+            end if;
+        end if;
+    end process;
 
     -- =========================================================================
     -- 2. Comparator (a < 255)
@@ -96,7 +114,10 @@ begin
             if sys_rst = '1' then
                 score_done <= '0';
             else
-                score_done <= score_trigger;
+                -- GATE THE OUTPUT: Only fire if we are actively processing a sample.
+                -- If processing_active is '0' (because loop_count > 255), this forces 
+                -- score_done to '0', preventing the FIFO overflow.
+                score_done <= score_trigger and processing_active;
             end if;
         end if;
     end process;

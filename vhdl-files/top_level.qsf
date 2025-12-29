@@ -62,8 +62,8 @@ set_global_assignment -name PARTITION_FITTER_PRESERVATION_LEVEL PLACEMENT_AND_RO
 set_global_assignment -name PARTITION_COLOR 16764057 -section_id Top
 set_location_assignment PIN_84 -to led_b
 set_location_assignment PIN_85 -to led_a
-set_location_assignment PIN_87 -to led_status[0]
-set_location_assignment PIN_86 -to led_status[1]
+set_location_assignment PIN_86 -to led_status[0]
+set_location_assignment PIN_87 -to led_status[1]
 set_location_assignment PIN_115 -to rx
 set_location_assignment PIN_114 -to tx
 set_location_assignment PIN_91 -to btn_rst
@@ -82,7 +82,6 @@ set_location_assignment PIN_126 -to fpga_seg_out[5]
 set_location_assignment PIN_124 -to fpga_seg_out[6]
 set_location_assignment PIN_127 -to fpga_seg_out[7]
 set_location_assignment PIN_23 -to clk_50
-set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
 set_global_assignment -name VHDL_FILE output_interface/seven_seg_scanner.vhd
 set_global_assignment -name VHDL_FILE preamble_processor/kasami_correlator_system.vhd
 set_global_assignment -name VHDL_FILE top_level.vhd
@@ -101,3 +100,5 @@ set_global_assignment -name VHDL_FILE output_interface/display_controller.vhd
 set_global_assignment -name QIP_FILE virtual_adc_interface/fifo_8bit_4096.qip
 set_global_assignment -name QIP_FILE output_interface/fifo_36bit_4096.qip
 set_global_assignment -name QIP_FILE preamble_processor/kasami_correlator_system/ram_dual_port.qip
+
+set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
