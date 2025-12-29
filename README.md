@@ -41,10 +41,10 @@ SYSTEM_TOP_LEVEL.vhd
 
 └── OUTPUT_INTERFACE.vhd (Wrapper)
 
-    ├── display_controller.vhd
+|   |── display_controller.vhd
 
-        └── seven_seg_scanner.vhd    <-- (Optional sub-block, or logic inside controller)
+|       └── seven_seg_scanner.vhd    <-- (Optional sub-block, or logic inside controller)
 
-    ├── uart_tx.vhd
+|   ├── uart_tx.vhd
 
-    └── fifo_36bit_256.vhd (Quartus IP)
+|   └── fifo_36bit_256.vhd (Quartus IP)
