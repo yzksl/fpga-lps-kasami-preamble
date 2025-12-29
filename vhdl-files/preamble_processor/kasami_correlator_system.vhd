@@ -231,7 +231,8 @@ begin
             if sys_rst = '1' then
                 reg_a_13b_out <= (others => '0');
             elsif capture_pulse_a = '1' then
-                reg_a_13b_out <= std_logic_vector(global_count);
+                -- Subtract 8 to compensate for pipeline delay
+                reg_a_13b_out <= std_logic_vector(global_count - 8);
             end if;
         end if;
     end process;
@@ -270,7 +271,8 @@ begin
             if sys_rst = '1' then
                 reg_b_13b_out <= (others => '0');
             elsif capture_pulse_b = '1' then
-                reg_b_13b_out <= std_logic_vector(global_count);
+                -- Subtract 8 to compensate for pipeline delay
+                reg_b_13b_out <= std_logic_vector(global_count - 8);
             end if;
         end if;
     end process;

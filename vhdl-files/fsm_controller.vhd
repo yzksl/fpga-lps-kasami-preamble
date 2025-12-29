@@ -151,7 +151,8 @@ begin
 
             when S_UPLOAD =>
                 tx_en      <= '1'; 
-                led_status <= "10"; 
+                led_status <= "10";
+                proc_en    <= '0';
 
         end case;
     end process;
