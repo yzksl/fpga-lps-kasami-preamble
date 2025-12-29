@@ -30,18 +30,17 @@ architecture rtl of fsm_controller is
     signal current_state, next_state : state_type;
 
     -- DRAIN TIMER CONSTANTS
-    -- 300 cycles is enough to flush the pipeline (Correlator loop is ~255 cycles).
+    -- 300 cycles is enough to flush the pipeline.
     constant DRAIN_LIMIT : integer := 300; 
     
     -- Timer Signals
-    -- Range 0 to 511 (9 bits) is sufficient to hold 300.
     signal drain_timer : unsigned(8 downto 0); 
     signal draining    : std_logic; 
 
 begin
 
     -- =========================================================================
-    -- 1. State Register (Sequential)
+    -- 1. State Register (Sequential) - SYNCHRONOUS RESET
     -- =========================================================================
     process(clk_50)
     begin
@@ -82,7 +81,7 @@ begin
     -- =========================================================================
     -- 3. Next State Logic (Combinational)
     -- =========================================================================
-    process(current_state, sw_start, in_fifo_empty, out_fifo_empty, drain_timer, draining)
+    process(current_state, sw_start, in_fifo_empty, out_fifo_empty, drain_timer)
     begin
         -- Default: Stay in current state
         next_state <= current_state;
@@ -90,15 +89,13 @@ begin
         case current_state is
             
             when S_RESET =>
-                next_state <= S_DONE;
-
-            when S_DONE =>
+                -- Wait here until Switch is LOW (Load Mode)
                 if sw_start = '0' then
                     next_state <= S_LOAD;
                 end if;
 
             when S_LOAD =>
-                -- Start only if FIFO has data (NOT empty)
+                -- Start processing only if FIFO has data AND Switch is HIGH
                 if (sw_start = '1') and (in_fifo_empty = '0') then
                     next_state <= S_PROCESS;
                 end if;
@@ -110,10 +107,16 @@ begin
                 end if;
 
             when S_UPLOAD =>
+                -- Once upload is finished, go to S_DONE
                 if out_fifo_empty = '1' then
-                    next_state <= S_RESET;
+                    next_state <= S_DONE;
                 end if;
-                
+            
+            when S_DONE =>
+                -- Trap State: Stay here forever.
+                -- Exit only via synchronous btn_rst in sequential process.
+                next_state <= S_DONE;
+
         end case;
     end process;
 

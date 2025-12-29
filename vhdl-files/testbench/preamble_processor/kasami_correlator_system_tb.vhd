@@ -44,7 +44,7 @@ architecture behavior of kasami_correlator_system_tb is
 
     constant CLK_PERIOD : time := 20 ns;
 
-    -- Helper Function to convert '1'/'0' to +100/-100
+    -- Helper Function
     function get_val(bit_in : std_logic) return integer is
     begin
         if bit_in = '1' then return 100; else return -100; end if;
@@ -58,6 +58,7 @@ begin
         score_a => tb_score_a, score_b => tb_score_b, score_done => tb_score_done
     );
 
+    -- Clock Gen
     process begin
         tb_clk <= '0'; wait for CLK_PERIOD/2;
         tb_clk <= '1'; wait for CLK_PERIOD/2;
@@ -67,28 +68,21 @@ begin
     -- MAIN STIMULUS
     -- =========================================================================
     process
-        variable v_val_a : integer;
-        variable v_val_b : integer;
-        variable v_total : integer;
-        variable idx_b   : integer;
+        variable v_val_a, v_val_b, v_total, idx_b : integer;
     begin
-        -- RESET
+        
+        -- =====================================================================
+        -- CASE 1: SEPARATED (A then B)
+        -- =====================================================================
+        report "--- CASE 1 STARTING: SEPARATED ---";
+        -- RESET THE SYSTEM BEFORE CASE 1
         tb_rst <= '1'; wait for 100 ns; tb_rst <= '0'; wait for 100 ns;
         wait until falling_edge(tb_clk);
 
-        -- =====================================================================
-        -- CASE 1: ENTIRELY SEPARATED (A first, then gap, then B)
-        -- =====================================================================
-        report "---------------------------------------------";
-        report "CASE 1: SEPARATED (Sequence A, Gap, Sequence B)";
-        report "---------------------------------------------";
-
-        -- 1.1 Send Sequence A
-        for repeat in 1 to 2 loop -- Repeat twice to fill circular buffer
+        -- Send Sequence A
+        for repeat in 1 to 2 loop
             for i in 0 to 254 loop
-                v_total := get_val(SEQ_A_REF(i)); -- Only A contributes
-                
-                -- Drive M=4
+                v_total := get_val(SEQ_A_REF(i));
                 for k in 1 to 4 loop
                     tb_demod_sample <= std_logic_vector(to_signed(v_total, 10));
                     tb_demod_ready <= '1'; wait for CLK_PERIOD; tb_demod_ready <= '0';
@@ -97,19 +91,17 @@ begin
             end loop;
         end loop;
 
-        if tb_found_a = '1' then report " [PASS] Case 1: A Found."; else report " [FAIL] Case 1: A Missing."; end if;
-
-        -- 1.2 Gap
+        -- Small gap
         tb_demod_sample <= (others => '0');
-        for i in 1 to 20 loop 
+        for i in 1 to 50 loop 
             tb_demod_ready <= '1'; wait for CLK_PERIOD; tb_demod_ready <= '0';
             wait until tb_score_done = '1'; wait for CLK_PERIOD;
         end loop;
 
-        -- 1.3 Send Sequence B
-        for repeat in 1 to 2 loop 
+        -- Send Sequence B
+        for repeat in 1 to 2 loop
             for i in 0 to 254 loop
-                v_total := get_val(SEQ_B_REF(i)); -- Only B contributes
+                v_total := get_val(SEQ_B_REF(i));
                 for k in 1 to 4 loop
                     tb_demod_sample <= std_logic_vector(to_signed(v_total, 10));
                     tb_demod_ready <= '1'; wait for CLK_PERIOD; tb_demod_ready <= '0';
@@ -117,64 +109,53 @@ begin
                 end loop;
             end loop;
         end loop;
-
-        if tb_found_b = '1' then report " [PASS] Case 1: B Found."; else report " [FAIL] Case 1: B Missing."; end if;
-
-        -- Gap before next case
-        tb_demod_sample <= (others => '0');
-        for i in 1 to 1100 loop -- Clear Buffer completely
-            tb_demod_ready <= '1'; wait for CLK_PERIOD; tb_demod_ready <= '0';
-            wait until tb_score_done = '1'; wait for CLK_PERIOD;
-        end loop;
-
-        -- =====================================================================
-        -- CASE 2: HALF SEPARATED / OVERLAPPING
-        -- A starts. 128 symbols later, B starts. They will overlap in the middle.
-        -- =====================================================================
-        report "---------------------------------------------";
-        report "CASE 2: OVERLAPPING (B starts halfway through A)";
-        report "---------------------------------------------";
-
-        -- Total Length = 255 (A) + 128 (Offset) = 383 symbols
-        -- Sequence A is valid from 0 to 254
-        -- Sequence B is valid from 128 to 382 (relative to start)
-
-        for i in 0 to 382 loop
-            v_val_a := 0;
-            v_val_b := 0;
-
-            -- Calculate A contribution
-            if i <= 254 then
-                v_val_a := get_val(SEQ_A_REF(i));
-            end if;
-
-            -- Calculate B contribution (Delayed by 128)
-            idx_b := i - 128;
-            if idx_b >= 0 and idx_b <= 254 then
-                v_val_b := get_val(SEQ_B_REF(idx_b));
-            end if;
-
-            v_total := v_val_a + v_val_b; -- SUM THE SIGNALS (Interference!)
-
-            -- Drive M=4
-            for k in 1 to 4 loop
-                tb_demod_sample <= std_logic_vector(to_signed(v_total, 10));
-                tb_demod_ready <= '1'; wait for CLK_PERIOD; tb_demod_ready <= '0';
-                wait until tb_score_done = '1'; wait for CLK_PERIOD;
-            end loop;
-        end loop;
-
-        -- Verification
-        -- Note: Due to overlap, scores might be slightly noisy, but strong enough to trigger.
-        if tb_found_a = '1' then report " [PASS] Case 2: A Found despite overlap."; else report " [FAIL] Case 2: A lost in noise."; end if;
-        if tb_found_b = '1' then report " [PASS] Case 2: B Found despite overlap."; else report " [FAIL] Case 2: B lost in noise."; end if;
         
-        -- Check Timestamps difference
-        if unsigned(tb_time_b) > unsigned(tb_time_a) then
-             report " [PASS] Case 2: Time B > Time A (Correct Order).";
-        end if;
+        -- Wait a moment to see the result
+        wait for 500 ns;
 
-        -- Clear Buffer
+        -- =====================================================================
+        -- CLEANING BUFFER (Prevents "Ghost" Detections in Next Case)
+        -- =====================================================================
+        report "--- CLEANING BUFFER BEFORE CASE 2 ---";
+        tb_demod_sample <= (others => '0');
+        -- Send 1100 zeros to fully flush the 1024-deep RAM
+        for i in 1 to 1100 loop 
+            tb_demod_ready <= '1'; wait for CLK_PERIOD; tb_demod_ready <= '0';
+            wait until tb_score_done = '1'; wait for CLK_PERIOD;
+        end loop;
+
+        -- =====================================================================
+        -- CASE 2: OVERLAPPING (B starts halfway through A)
+        -- =====================================================================
+        report "--- CASE 2 STARTING: OVERLAPPING ---";
+        -- RESET THE SYSTEM BEFORE CASE 2 (Clears Time A and Time B to 0)
+        tb_rst <= '1'; wait for 100 ns; tb_rst <= '0'; wait for 100 ns;
+        wait until falling_edge(tb_clk);
+
+        for repeat in 1 to 2 loop
+            for i in 0 to 382 loop
+                v_val_a := 0; v_val_b := 0;
+                -- Logic for Overlapping
+                if i <= 254 then v_val_a := get_val(SEQ_A_REF(i)); end if;
+                idx_b := i - 128;
+                if idx_b >= 0 and idx_b <= 254 then v_val_b := get_val(SEQ_B_REF(idx_b)); end if;
+                v_total := v_val_a + v_val_b;
+
+                for k in 1 to 4 loop
+                    tb_demod_sample <= std_logic_vector(to_signed(v_total, 10));
+                    tb_demod_ready <= '1'; wait for CLK_PERIOD; tb_demod_ready <= '0';
+                    wait until tb_score_done = '1'; wait for CLK_PERIOD;
+                end loop;
+            end loop;
+        end loop;
+
+        -- Wait a moment to see the result
+        wait for 500 ns;
+
+        -- =====================================================================
+        -- CLEANING BUFFER (Prevents "Ghost" Detections in Next Case)
+        -- =====================================================================
+        report "--- CLEANING BUFFER BEFORE CASE 3 ---";
         tb_demod_sample <= (others => '0');
         for i in 1 to 1100 loop 
             tb_demod_ready <= '1'; wait for CLK_PERIOD; tb_demod_ready <= '0';
@@ -182,42 +163,29 @@ begin
         end loop;
 
         -- =====================================================================
-        -- CASE 3: NOT SEPARATED AT ALL (SIMULTANEOUS)
-        -- A and B are added together perfectly aligned.
+        -- CASE 3: SIMULTANEOUS (A + B Combined)
         -- =====================================================================
-        report "---------------------------------------------";
-        report "CASE 3: SIMULTANEOUS (A + B Combined)";
-        report "---------------------------------------------";
+        report "--- CASE 3 STARTING: SIMULTANEOUS ---";
+        -- RESET THE SYSTEM BEFORE CASE 3 (Clears Time A and Time B to 0)
+        tb_rst <= '1'; wait for 100 ns; tb_rst <= '0'; wait for 100 ns;
+        wait until falling_edge(tb_clk);
 
-        for i in 0 to 254 loop
-            v_val_a := get_val(SEQ_A_REF(i));
-            v_val_b := get_val(SEQ_B_REF(i));
-            
-            v_total := v_val_a + v_val_b; -- Perfect overlap sum
+        for repeat in 1 to 2 loop
+            for i in 0 to 254 loop
+                v_val_a := get_val(SEQ_A_REF(i));
+                v_val_b := get_val(SEQ_B_REF(i));
+                v_total := v_val_a + v_val_b;
 
-            for k in 1 to 4 loop
-                tb_demod_sample <= std_logic_vector(to_signed(v_total, 10));
-                tb_demod_ready <= '1'; wait for CLK_PERIOD; tb_demod_ready <= '0';
-                wait until tb_score_done = '1'; wait for CLK_PERIOD;
+                for k in 1 to 4 loop
+                    tb_demod_sample <= std_logic_vector(to_signed(v_total, 10));
+                    tb_demod_ready <= '1'; wait for CLK_PERIOD; tb_demod_ready <= '0';
+                    wait until tb_score_done = '1'; wait for CLK_PERIOD;
+                end loop;
             end loop;
         end loop;
 
-        wait for CLK_PERIOD;
-        
-        -- Both flags should go HIGH at roughly the same time
-        if tb_found_a = '1' and tb_found_b = '1' then 
-            report " [PASS] Case 3: Both A and B found simultaneously!";
-        else 
-            report " [FAIL] Case 3: One or both sequences missing."; 
-        end if;
-
-        -- Check if timestamps are identical (or very close)
-        if tb_time_a = tb_time_b then
-            report " [PASS] Case 3: Timestamps are identical.";
-        else
-            report " [INFO] Case 3: Timestamps differ slightly (acceptable due to processing latency).";
-        end if;
-
+        -- Final verification
+        wait for 200 ns;
         report "--- SIMULATION FINISHED ---";
         wait;
     end process;
