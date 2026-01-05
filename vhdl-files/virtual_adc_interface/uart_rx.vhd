@@ -14,7 +14,7 @@ entity uart_receiver is
         -- Serial Input
         RX          : in  std_logic;
         
-        -- Control Input (Changed to Input as requested)
+        -- Control Input
         rx_w_en     : in  std_logic;                    -- Enable signal to allow 'Ready' output
         
         -- Outputs
@@ -28,7 +28,7 @@ architecture rtl of uart_receiver is
     -- Baud Rate Constants
     constant BIT_PERIOD : integer := CLK_FREQ / BAUD_RATE;
     constant HALF_BIT   : integer := BIT_PERIOD / 2;
-    
+
     -- State Machine
     type state_type is (IDLE, START_BIT, DATA_BITS, STOP_BIT, CLEANUP);
     signal state : state_type;
@@ -77,19 +77,22 @@ begin
                         baud_timer <= 0;
                         bit_index  <= 0;
                         
+                        -- Start bit detected (falling edge on synchronized input)
                         if rx_sync_2 = '0' then
                             state <= START_BIT;
                         end if;
 
-                    -- START_BIT: Confirm valid start bit
+                    -- START_BIT: Confirm valid start bit (check middle of bit)
                     when START_BIT =>
                         if baud_timer < HALF_BIT then
                             baud_timer <= baud_timer + 1;
                         else
+                            -- Check if the line is still low (valid start bit)
                             if rx_sync_2 = '0' then
                                 baud_timer <= 0;
                                 state <= DATA_BITS;
                             else
+                                -- False alarm / glitch
                                 state <= IDLE;
                             end if;
                         end if;
@@ -112,7 +115,11 @@ begin
 
                     -- STOP_BIT: Wait for Stop Bit
                     when STOP_BIT =>
-                        if baud_timer < BIT_PERIOD then
+                        -- *** FIX IS HERE ***
+                        -- We only wait for half the bit period. 
+                        -- This ensures we catch the stop bit state, but finish early 
+                        -- enough to be ready for the NEXT start bit immediately.
+                        if baud_timer < HALF_BIT then
                             baud_timer <= baud_timer + 1;
                         else
                             state <= CLEANUP;
@@ -123,7 +130,7 @@ begin
                     when CLEANUP =>
                         -- 1. Always update the data output with the received byte
                         rx_data_out <= rx_buffer;
-                        
+
                         -- 2. Check the CRITERIA for rx_ready:
                         --    Must have finished reception (We are in CLEANUP)
                         --    AND input rx_w_en must be '1'
@@ -133,7 +140,7 @@ begin
                             rx_ready <= '0';
                         end if;
                         
-                        -- Return to IDLE for next byte
+                        -- Return to IDLE for next byte immediately
                         state <= IDLE;
 
                 end case;
